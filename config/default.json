@@ -1,0 +1,4 @@
+{
+    "mongoURI": "mongodb+srv://sumit:sumit@todo.o0bit.mongodb.net/<dbname>?retryWrites=true&w=majority",
+    "jwtSecret": "itisasecret"
+  }
