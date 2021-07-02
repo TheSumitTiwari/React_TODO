@@ -22,6 +22,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: Date(Date.now()).toString(),
   },
+  localAuth: {
+    type: Boolean,
+  },
+  googleAuth: {
+    id: {
+      type: String,
+    },
+  },
 });
 
 module.exports = User = mongoose.model("user", UserSchema);

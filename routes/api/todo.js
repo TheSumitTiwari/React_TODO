@@ -13,7 +13,6 @@ router.get("/secret", passportJWT, (req, res) => {
     res.json(req.user);
   });
 
-
 router.post(
   "/add",
   //for user varification
@@ -44,7 +43,8 @@ router.post(
             if(err){
               res.status(500).json({ errors: [{ msg: err.message }] });
             }else{
-              res.status(200).json(`Todo added succesfully`);
+              console.log(added)
+              res.status(200).json(added);
             }
           });
     } catch (err) {
@@ -63,6 +63,7 @@ router.get("/todos", passportJWT, (req, res) => {
           request.map(function (item) {
             todoArr.push(item);
           });
+          todoArr = todoArr.reverse();
           res.status(200).json({
             todoArr,
           });
@@ -72,15 +73,14 @@ router.get("/todos", passportJWT, (req, res) => {
 
 
 router.delete(
-    "/delete",
+    "/delete/:id",
     //for user varification
     passportJWT,
     // For Input Validation with express validator
     async (req, res) => {
       const userId = req.user.email;
-      const todoId = req.body.todoId;
       try {
-            await Todo.findOneAndDelete({userId: userId, _id: todoId}, (err, deleted) => {
+            await Todo.findOneAndDelete({userId: userId, _id: req.params.id}, (err, deleted) => {
               if(err){
                 res.status(500).json({ errors: [{ msg: err.message }] });
               }else{
@@ -97,20 +97,20 @@ router.delete(
 
 
 router.put(
-    "/update/:id/",
+    "/update/:id",
     //for user varification
     passportJWT,
     // For Input Validation with express validator
     async (req, res) => {
-      const { todoId } = req.params.id;
       const userId = req.user.email;
       const update = {task: req.body.task, description: req.body.description}
+      console.log(update)
       try {
-        await Todo.findOneAndUpdate({userId: userId, _id: todoId}, update, (err, updated) => {
+        await Todo.findOneAndUpdate({userId: userId, _id: req.params.id},update, (err, updated) => {
           if(err){
             res.status(500).json({ errors: [{ msg: err.message }] });
           }else{
-            console.log(updated);
+            console.log("1111111111",updated);
             res.status(200).json(`Todo succesfully Updated`);
           }
         });
@@ -142,8 +142,7 @@ router.put(
                 if(err){
                   res.status(500).json({ errors: [{ msg: err.message }] });
                 }else{
-                  console.log(updated);
-                  res.status(200).json(`Todo unstared`);
+                  res.status(200).json(false);
                 }
               });
           }else{
@@ -152,8 +151,7 @@ router.put(
               if(err){
                 res.status(500).json({ errors: [{ msg: err.message }] });
               }else{
-                console.log(updated);
-                res.status(200).json(`Todo stared`);
+                res.status(200).json(true);
               }
             });
           }
@@ -167,26 +165,33 @@ router.put(
 
   router.put(
     "/completed",
-    //for user varification
     passportJWT,
   
     async (req, res) => {
       const { todoId } = req.body;
       const userId = req.user.email;
-      const todo = Todo.findOne({userId: userId, _id: todoId})
+      const todo = await Todo.findOne({userId: userId, _id: todoId})
       try {
-          if(!todo.completed){
-              const update = {completed:true};
+          if(todo.completed){
+              const update = {completed:false};
               await Todo.findOneAndUpdate({userId: userId, _id: todoId}, update, (err, updated) => {
                 if(err){
                   res.status(500).json({ errors: [{ msg: err.message }] });
                 }else{
-                  console.log(updated);
-                  res.status(200).json(`Todo unstared`);
+                  console.log("-----------",updated);
+                  res.status(200).json(false);
                 }
               });
-          }else{           
-                res.status(500).json({ errors: [{ msg: "Already Completed" }] });                     
+          }else{
+            const update = {completed:true};
+              await Todo.findOneAndUpdate({userId: userId, _id: todoId}, update, (err, updated) => {
+                if(err){
+                  res.status(500).json({ errors: [{ msg: err.message }] });
+                }else{
+                  console.log("--------",updated);
+                  res.status(200).json(true);
+                }
+              });
           }
       } 
       catch (err) {
@@ -196,5 +201,5 @@ router.put(
     }
   );
 
-
+  
 module.exports = router;

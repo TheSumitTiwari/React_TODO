@@ -11,6 +11,10 @@ const { check, validationResult } = require("express-validator/check");
 const unirest = require("unirest");
 const User = require("../../models/Users");
 
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(
+  "1093633274034-j5bhc405cp9nbibtl09fvlnq5u9s65i2.apps.googleusercontent.com"
+);
 
 router.get("/", (req, res) => res.send("Auth Route"));
 
@@ -47,7 +51,7 @@ router.post(
         jwt.sign(
           payload,
           config.get("jwtSecret"),
-          { expiresIn: 3600 },
+          { expiresIn: 36000 },
           (err, token) => {
             if (err) throw err;
             res.json({ token }); // Return jsonwebtoken
@@ -121,5 +125,109 @@ router.post(
     }
   }
 );
+
+//google Oauth login and register
+router.post("/oauth/google", (req, res) => {
+  const tokenId = req.body.tokenId;
+  const googleId = req.body.googleId;
+  client
+    .verifyIdToken({
+      idToken: tokenId,
+      audience:
+        "1093633274034-j5bhc405cp9nbibtl09fvlnq5u9s65i2.apps.googleusercontent.com",
+    })
+    .then(async (response) => {
+      console.log(response.payload);
+      if (response.payload.email_verified) {
+        // Check if account is already existing
+        
+          await User.findOne({
+            email: response.payload.email,
+          }).exec(async (err, existingUser) => {
+            if (err) {
+              res.status(500).json({ errors: [{ msg: err.message }] });
+            }
+
+            if (existingUser) {
+              console.log("User already exists... Proceeding to login");
+              try {
+                // JWT token generation Process
+                console.log(existingUser);
+
+                //creating payload for jsonwebtoken
+                const payload = {
+                  user: {
+                    id: existingUser.id,
+                  },
+                };
+
+                //  Token Generation
+                jwt.sign(
+                  payload,
+                  config.get("jwtSecret"),
+                  { expiresIn: 3600 },
+                  (err, token) => {
+                    if (err) throw err;
+                    console.log("WELCOME : " + token);
+                    res.json({ token }); // Return jsonwebtoken
+                  }
+                );
+              } catch (err) {
+                console.error(err.message);
+                res.status(500).json({ errors: [{ msg: err.message }] });
+              }
+            } else {
+              // If new account
+              console.log("User doesn't exists... Proceeding to register");
+              const newUser = new User({
+                name: response.payload.name,
+                email: response.payload.email,
+                // avatar: response.payload.picture,
+                googleAuth: {
+                  id: googleId,
+                },
+              });
+              await newUser.save((err1, doc) => {
+                if (err1) {
+                  res.status(500).json({ errors: [{ msg: err.message }] });
+                } else {
+                  try {
+                    // JWT token generation Process
+                    console.log(doc);
+
+                    //creating payload for jsonwebtoken
+                    const payload = {
+                      user: {
+                        id: doc.id,
+                      },
+                    };
+
+                    //  Token Generation
+                    jwt.sign(
+                      payload,
+                      config.get("jwtSecret"),
+                      { expiresIn: 3600 },
+                      (err, token) => {
+                        if (err) throw err;
+                        console.log("WELCOME : " + token);
+                        res.json({ token }); // Return jsonwebtoken
+                      }
+                    );
+                  } catch (err) {
+                    console.error(err.message);
+                    res.status(500).json({ errors: [{ msg: err.message }] });
+                  }
+                }
+              });
+            }
+          });
+      } else {
+        //email not varified with google then
+        res.status(400).json({ errors: [{ msg: "invalid request" }] });
+      }
+    });
+  //-------------------------------------------------
+  //
+});
 
 module.exports = router;
